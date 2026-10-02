@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>非遗湖湘 · 可交互原型（演示版）</title>
+<style>
+:root{
+  --red:#B3342B; --red-d:#8E241D; --gold:#C89B5A; --ink:#2B2622;
+  --paper:#F7F2E9; --teal:#3D5A5B; --line:#E7DECD; --muted:#8A7F6F;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1E1A17;font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:20px 0 40px;overflow-x:hidden}
+.serif{font-family:"Noto Serif SC","SimSun",serif}
+/* ---------- 顶部说明 ---------- */
+.top{width:100%;max-width:1100px;padding:0 20px;text-align:center;color:#E8DFCE}
+.top h1{font-size:22px;letter-spacing:4px;font-family:"Noto Serif SC",serif}
+.top p{font-size:12px;color:#9A9080;margin-top:6px;letter-spacing:1px}
+/* ---------- 页面地图 ---------- */
+.map{width:100%;max-width:1120px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:16px 20px 6px}
+.map button{background:#2E2924;color:#C9BFA9;border:1px solid #3D362E;border-radius:999px;padding:6px 14px;font-size:12px;cursor:pointer;transition:.15s}
+.map button:hover{background:#3A332B;color:#fff}
+.map button.on{background:var(--red);color:#fff;border-color:var(--red)}
+/* ---------- 手机容器 ---------- */
+.stage{position:relative;margin-top:14px}
+.device-wrap{width:393px;height:852px;transform:scale(.78);transform-origin:top center;margin:0 auto;margin-bottom:calc(852px * -0.22)}
+.phone{width:393px;height:852px;background:var(--paper);border-radius:54px;border:11px solid #111;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.sb{height:46px;flex-shrink:0;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:13px;font-weight:600;background:var(--paper)}
+.sb .r{display:flex;gap:5px;align-items:center}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#111;border-radius:14px;z-index:50}
+/* ---------- 屏幕 ---------- */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;background:var(--paper);overflow:hidden}
+.screen.active{display:flex;animation:fadeIn .28s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+.tabbar{height:74px;flex-shrink:0;background:#fff;border-top:1px solid var(--line);display:flex;align-items:flex-start;padding-top:9px}
+.tabbar div{flex:1;text-align:center;font-size:10.5px;color:#A79C8A;line-height:1.5;cursor:pointer}
+.tabbar div.on{color:var(--red);font-weight:700}
+.tabbar .ti{font-size:19px;display:block}
+/* ---------- 通用元件 ---------- */
+.tap{cursor:pointer}
+.ph{display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.g1{background:linear-gradient(135deg,#C89B5A,#8E241D)}
+.g2{background:linear-gradient(135deg,#3D5A5B,#2B2622)}
+.g3{background:linear-gradient(135deg,#B3542B,#C89B5A)}
+.g4{background:linear-gradient(135deg,#6B4A3A,#B3342B)}
+.g5{background:linear-gradient(135deg,#A87E3F,#5C4A2E)}
+.chip{display:inline-block;padding:5px 14px;border-radius:999px;font-size:12px;background:#F1E6D2;color:#8A6A33}
+.chip.r{background:rgba(179,52,43,.10);color:var(--red)}
+.btn{display:inline-block;padding:11px 30px;border-radius:999px;font-size:14px;cursor:pointer;border:none}
+.btn-p{background:var(--red);color:#fff;box-shadow:0 6px 16px rgba(179,52,43,.32)}
+.btn-o{border:1.5px solid var(--red);color:var(--red);background:transparent}
+.back{position:absolute;top:54px;left:16px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.38);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;z-index:40;cursor:pointer}
+.back.light{background:rgba(43,38,34,.12);color:var(--ink)}
+/* toast */
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:rgba(43,38,34,.92);color:#FDF8EF;padding:9px 20px;border-radius:999px;font-size:12.5px;z-index:99;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+/* 底部提示 */
+.hint{margin-top:16px;color:#9A9080;font-size:12px;text-align:center;max-width:640px;line-height:1.9}
+.hint b{color:#E8DFCE}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>非遗湖湘 · 可交互原型</h1>
+  <p>点击手机屏幕任意元素体验跳转｜底部 Tab 切换模块｜⬅ 返回｜用于答辩演示与录屏</p>
+</div>
+<div class="map" id="map"></div>
+
+<div class="stage">
+  <div class="device-wrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div id="toast">已收藏</div>
+
+      <!-- ═══════════ P01 首页 ═══════════ -->
+      <div class="screen active" id="home">
+        <div class="sb"><span>13:03</span><span class="r">📶 5G ▮64</span></div>
+        <div style="padding:6px 22px 0;display:flex;align-items:center">
+          <div style="flex:1;background:#fff;border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:13px;color:#B0A48E">🔍 搜索非遗 / 传承人</div>
+          <div class="tap" style="width:38px;height:38px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;margin-left:10px;font-family:'Noto Serif SC',serif" onclick="go('profile')">雅</div>
+        </div>
+        <div class="ph g1 tap" style="margin:14px 22px 0;border-radius:18px;height:150px" onclick="go('detail')"><span style="font-size:40px">🧵</span><div style="position:absolute;left:20px;bottom:18px;color:#FDF8EF"><div class="serif" style="font-size:19px;font-weight:700">千年湘绣 · 一针一世界</div><div style="font-size:11px;opacity:.85;margin-top:3px">国家级非遗 · 专题数字展</div></div></div>
+        <div style="display:flex;gap:10px;padding:16px 22px 0">
+          <div class="tap" style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 0" onclick="go('gallery')"><div style="font-size:22px">🗂</div><div style="font-size:11.5px;margin-top:4px;font-weight:600">非遗图鉴</div></div>
+          <div class="tap" style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 0" onclick="go('masters')"><div style="font-size:22px">🧑‍🎨</div><div style="font-size:11.5px;margin-top:4px;font-weight:600">传承人</div></div>
+          <div class="tap" style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 0" onclick="go('events')"><div style="font-size:22px">🎫</div><div style="font-size:11.5px;margin-top:4px;font-weight:600">活动体验</div></div>
+          <div class="tap" style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 0" onclick="go('academy')"><div style="font-size:22px">🎓</div><div style="font-size:11.5px;margin-top:4px;font-weight:600">非遗学堂</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:18px 22px 8px"><span class="serif" style="font-size:17px;font-weight:700">今日推荐</span><span style="font-size:11px;color:var(--muted)">更多 ›</span></div>
+        <div style="padding:0 22px">
+          <div class="tap" style="display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;margin-bottom:10px" onclick="go('detail')"><div class="ph g4" style="width:74px;height:74px;border-radius:12px"><span style="font-size:28px">🏮</span></div><div><div style="font-size:14.5px;font-weight:700">滩头年画</div><div style="font-size:11px;color:var(--muted);margin-top:3px">国家级 · 传统美术 · 隆回县</div><span class="chip r" style="margin-top:6px">门神画专题</span></div></div>
+          <div class="tap" style="display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px" onclick="go('detail')"><div class="ph g3" style="width:74px;height:74px;border-radius:12px"><span style="font-size:28px">🎆</span></div><div><div style="font-size:14.5px;font-weight:700">浏阳花炮制作技艺</div><div style="font-size:11px;color:var(--muted);margin-top:3px">国家级 · 传统技艺 · 浏阳市</div><span class="chip" style="margin-top:6px">花火里的千年浪漫</span></div></div>
+        </div>
+        <div class="tabbar">
+          <div class="on" data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P02 图鉴 ═══════════ -->
+      <div class="screen" id="gallery">
+        <div class="sb"><span>13:05</span><span class="r">📶 5G ▮64</span></div>
+        <div class="serif" style="padding:8px 22px 2px;font-size:24px;font-weight:700">非遗图鉴</div>
+        <div style="padding:4px 22px;font-size:11.5px;color:var(--muted)">收录湖湘非遗项目 128 项 · 持续更新</div>
+        <div style="display:flex;gap:8px;padding:12px 22px"><span class="chip" style="background:var(--red);color:#fff">全部</span><span class="chip">传统美术</span><span class="chip">传统技艺</span><span class="chip">传统戏剧</span><span class="chip">民俗</span></div>
+        <div style="flex:1;padding:0 22px;overflow:hidden">
+          <div style="display:flex;gap:12px;margin-bottom:12px">
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('detail')"><div class="ph g4" style="height:150px"><span style="font-size:40px">🧵</span></div><div style="padding:10px 12px"><div style="font-size:14px;font-weight:700">湘绣</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统美术</div><span class="chip r" style="margin-top:6px;font-size:10px">♥ 2.3万</span></div></div>
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('detail')"><div class="ph g3" style="height:150px"><span style="font-size:40px">🏮</span></div><div style="padding:10px 12px"><div style="font-size:14px;font-weight:700">滩头年画</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统美术</div><span class="chip" style="margin-top:6px;font-size:10px">♥ 1.1万</span></div></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:12px">
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('detail')"><div class="ph g2" style="height:150px"><span style="font-size:40px">💎</span></div><div style="padding:10px 12px"><div style="font-size:14px;font-weight:700">苗族银饰</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统技艺</div></div></div>
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('detail')"><div class="ph g5" style="height:150px"><span style="font-size:40px">🎭</span></div><div style="padding:10px 12px"><div style="font-size:14px;font-weight:700">湘剧</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统戏剧</div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div class="on" data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P03 详情 ═══════════ -->
+      <div class="screen" id="detail">
+        <div class="sb" style="position:absolute;top:0;left:0;right:0;z-index:6;background:transparent;color:#fff"><span>13:06</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back" onclick="back()">‹</div>
+        <div class="ph g4" style="height:290px;flex-shrink:0"><span style="font-size:64px">🧵</span><div class="tap" style="position:absolute;top:58px;right:16px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center" onclick="fav(this)">♡</div></div>
+        <div style="background:var(--paper);border-radius:24px 24px 0 0;margin-top:-24px;padding:20px 22px;flex:1">
+          <div style="display:flex;align-items:center;gap:10px"><span class="serif" style="font-size:24px;font-weight:700">湘绣</span><span class="chip r">国家级非遗</span><span class="chip">传统美术</span></div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:6px">长沙市 · 2006 年入选首批国家级名录 · ♥ 收藏 2.3 万</div>
+          <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px">
+            <div style="font-size:13px;font-weight:700">项目简介</div>
+            <p style="font-size:12px;color:#5A5248;line-height:1.8;margin-top:6px">湘绣是中国四大名绣之一，以狮、虎为主题代表作，独创「鬅毛针法」使虎毛刚劲竖立、栩栩如生，素有「绣花能生香，绣鸟能听声」之誉。</p>
+          </div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px" onclick="go('master')">
+            <div style="font-size:13px;font-weight:700">传承谱系 <span style="float:right;color:var(--muted);font-weight:400;font-size:11px">查看传承人 ›</span></div>
+            <div style="display:flex;align-items:center;margin-top:14px">
+              <div style="text-align:center"><div style="width:12px;height:12px;border-radius:50%;background:var(--gold)"></div><div style="font-size:10px;color:var(--muted);margin-top:4px">1899</div></div>
+              <div style="flex:1;height:2px;background:var(--gold)"></div>
+              <div style="text-align:center"><div style="width:12px;height:12px;border-radius:50%;background:var(--gold)"></div><div style="font-size:10px;color:var(--muted);margin-top:4px">1950s</div></div>
+              <div style="flex:1;height:2px;background:var(--gold)"></div>
+              <div style="text-align:center"><div style="width:14px;height:14px;border-radius:50%;background:var(--red);outline:3px solid rgba(179,52,43,.2)"></div><div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:700">柳老师</div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px"><span class="btn btn-p tap" style="flex:1;text-align:center" onclick="go('lecture')">▶ 观看视频</span><span class="btn btn-o tap" style="flex:1;text-align:center" onclick="go('events')">🎫 相关活动</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P04 传承人列表 ═══════════ -->
+      <div class="screen" id="masters">
+        <div class="sb"><span>13:08</span><span class="r">📶 5G ▮64</span></div>
+        <div class="serif" style="padding:8px 22px 2px;font-size:24px;font-weight:700">传承人</div>
+        <div style="padding:4px 22px;font-size:11.5px;color:var(--muted)">认识守艺人 · 聆听指尖上的故事</div>
+        <div style="padding:14px 22px">
+          <div class="tap" style="display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;align-items:center" onclick="go('master')">
+            <div class="ph g4" style="width:64px;height:64px;border-radius:50%;flex-shrink:0"><span style="font-size:30px">👩‍🎨</span></div>
+            <div style="flex:1"><div style="font-size:15px;font-weight:700">柳映霜 <span style="font-size:10px;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:1px 5px;margin-left:6px">国家级</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px">湘绣 · 鬅毛针法第四代传人</div><div style="font-size:10.5px;color:#B8934F;margin-top:4px">⭐ 4.9 · 粉丝 5.2 万</div></div>
+            <span class="btn btn-o" style="padding:6px 16px;font-size:12px">关注</span>
+          </div>
+          <div class="tap" style="display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;align-items:center" onclick="go('master')">
+            <div class="ph g3" style="width:64px;height:64px;border-radius:50%;flex-shrink:0"><span style="font-size:30px">🧙‍♂️</span></div>
+            <div style="flex:1"><div style="font-size:15px;font-weight:700">钟海生 <span style="font-size:10px;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:1px 5px;margin-left:6px">国家级</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px">滩头年画 · 版刻技艺代表</div><div style="font-size:10.5px;color:#B8934F;margin-top:4px">⭐ 4.8 · 粉丝 3.7 万</div></div>
+            <span class="btn btn-p" style="padding:6px 16px;font-size:12px">已关注</span>
+          </div>
+          <div class="tap" style="display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;align-items:center" onclick="go('master')">
+            <div class="ph g2" style="width:64px;height:64px;border-radius:50%;flex-shrink:0"><span style="font-size:30px">🧑‍🏭</span></div>
+            <div style="flex:1"><div style="font-size:15px;font-weight:700">龙秀英 <span style="font-size:10px;color:#8A6A33;border:1px solid #C89B5A;border-radius:4px;padding:1px 5px;margin-left:6px">省级</span></div><div style="font-size:11px;color:var(--muted);margin-top:3px">苗族银饰锻制技艺</div></div>
+            <span class="btn btn-o" style="padding:6px 16px;font-size:12px">关注</span>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div class="on" data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P05 传承人主页 ═══════════ -->
+      <div class="screen" id="master">
+        <div class="sb"><span>13:09</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back light" onclick="back()">‹</div>
+        <div class="ph g4" style="height:220px;flex-shrink:0"><span style="font-size:44px">🧵</span></div>
+        <div style="padding:0 22px;flex:1">
+          <div style="display:flex;align-items:flex-end;margin-top:-42px">
+            <div style="width:84px;height:84px;border-radius:50%;border:4px solid var(--paper);background:linear-gradient(135deg,#C89B5A,#8E241D);display:flex;align-items:center;justify-content:center;font-size:36px">👩‍🎨</div>
+            <div style="margin-left:14px;padding-bottom:6px"><div style="font-size:19px;font-weight:700">柳映霜</div><div style="font-size:11px;color:var(--muted)">湘绣 · 国家级代表性传承人</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px"><span class="chip r">鬅毛针第四代</span><span class="chip">长沙 · 开福区</span><span class="chip">⭐ 4.9</span></div>
+          <p style="font-size:12px;color:#5A5248;line-height:1.8;margin-top:12px">从业 38 年，作品《猛虎·啸月》获中国工艺美术百花奖金奖。致力于湘绣进校园，累计授课 600 余课时。</p>
+          <div style="display:flex;gap:10px;margin-top:14px"><span class="btn btn-p tap" style="flex:1;text-align:center" onclick="showToast('已关注 柳映霜')">＋ 关注</span><span class="btn btn-o tap" style="flex:1;text-align:center" onclick="go('lecture')">🎓 云上讲堂</span></div>
+          <div class="serif" style="font-size:15px;font-weight:700;margin:18px 0 10px">代表作品</div>
+          <div style="display:flex;gap:10px">
+            <div class="ph g1" style="flex:1;height:100px;border-radius:12px"><span style="font-size:26px">🐯</span></div>
+            <div class="ph g3" style="flex:1;height:100px;border-radius:12px"><span style="font-size:26px">🕊️</span></div>
+            <div class="ph g5" style="flex:1;height:100px;border-radius:12px"><span style="font-size:26px">🌸</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P06 云上讲堂 ═══════════ -->
+      <div class="screen" id="lecture">
+        <div class="sb"><span>13:10</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back" onclick="back()">‹</div>
+        <div class="ph g2" style="height:210px;flex-shrink:0"><div class="tap" style="width:64px;height:64px;border-radius:50%;background:rgba(253,248,239,.25);display:flex;align-items:center;justify-content:center;color:#FDF8EF;font-size:26px" onclick="showToast('视频播放中…')">▶</div><div style="position:absolute;bottom:14px;left:18px;color:#FDF8EF;font-size:11px;opacity:.85">《一针一世界》第 4 期 · 24:36</div></div>
+        <div style="padding:16px 22px;flex:1">
+          <div class="serif" style="font-size:19px;font-weight:700">云上讲堂 · 柳映霜的鬅毛针课</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#C89B5A,#8E241D);display:flex;align-items:center;justify-content:center;font-size:16px">👩‍🎨</div><div style="font-size:12.5px;font-weight:600">柳映霜</div><span class="chip r" style="font-size:10px">主讲</span></div>
+          <p style="font-size:12px;color:#5A5248;line-height:1.8;margin-top:12px">本期柳老师拆解鬅毛针的劈丝与运针轨迹，教你绣出「会站立」的虎毛。适合有一定基础的绣友。</p>
+          <div style="display:flex;gap:14px;margin-top:12px;font-size:11.5px;color:var(--muted)"><span class="tap" onclick="showToast('已点赞')">♥ 3,246</span><span class="tap" onclick="showToast('评论区')">💬 412</span><span class="tap" onclick="showToast('已复制链接')">☆ 分享</span></div>
+          <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+            <div style="font-size:13px;font-weight:700">热门评论</div>
+            <div style="font-size:11.5px;color:#5A5248;margin-top:8px;line-height:1.7"><b>绣里偷闲：</b>劈到 1/64 丝的时候手都在抖，但是真的出效果！</div>
+            <div style="font-size:11.5px;color:#5A5248;margin-top:6px;line-height:1.7"><b>麓山小鹿：</b>下周工坊课见！已经预约成功啦 🎫</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P07 活动列表 ═══════════ -->
+      <div class="screen" id="events">
+        <div class="sb"><span>13:12</span><span class="r">📶 5G ▮64</span></div>
+        <div class="serif" style="padding:8px 22px 2px;font-size:24px;font-weight:700">活动体验</div>
+        <div style="padding:4px 22px;font-size:11.5px;color:var(--muted)">走进工坊与戏台，和非遗面对个面</div>
+        <div style="display:flex;gap:8px;padding:12px 22px"><span class="chip" style="background:var(--red);color:#fff">全部</span><span class="chip">展览</span><span class="chip">工坊</span><span class="chip">演出</span></div>
+        <div style="padding:0 22px">
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;display:flex;gap:12px;margin-bottom:12px" onclick="go('event')">
+            <div class="ph g4" style="width:92px;height:92px;border-radius:12px;flex-shrink:0"><span style="font-size:32px">🧵</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">湘绣非遗体验工坊 · 第 12 期</div><div style="font-size:11px;color:var(--muted);margin-top:4px">📅 10.02 周五 14:00</div><div style="font-size:11px;color:var(--muted);margin-top:2px">📍 湖南省工艺美术馆</div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:var(--red);font-weight:700">￥68<span style="font-size:10px;color:var(--muted);font-weight:400"> /人</span></span><span class="chip r" style="font-size:10px">剩 9 席</span></div></div>
+          </div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;display:flex;gap:12px;margin-bottom:12px" onclick="go('event')">
+            <div class="ph g3" style="width:92px;height:92px;border-radius:12px;flex-shrink:0"><span style="font-size:32px">🏮</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">滩头年画上新展《门神百态》</div><div style="font-size:11px;color:var(--muted);margin-top:4px">📅 10.01 – 10.31 全天</div><div style="font-size:11px;color:var(--muted);margin-top:2px">📍 隆回 · 滩头年画馆</div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:#3D8B57;font-weight:700">免费</span><span class="chip" style="font-size:10px">热展中</span></div></div>
+          </div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;display:flex;gap:12px" onclick="go('event')">
+            <div class="ph g2" style="width:92px;height:92px;border-radius:12px;flex-shrink:0"><span style="font-size:32px">🎭</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">湘剧经典折子戏专场</div><div style="font-size:11px;color:var(--muted);margin-top:4px">📅 10.04 周日 19:30</div><div style="font-size:11px;color:var(--muted);margin-top:2px">📍 湖南大剧院 · 小剧场</div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:var(--red);font-weight:700">￥120<span style="font-size:10px;color:var(--muted);font-weight:400"> /人</span></span><span class="chip r" style="font-size:10px">仅剩 3 席</span></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div class="on" data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P08 活动详情 ═══════════ -->
+      <div class="screen" id="event">
+        <div class="sb"><span>13:13</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back" onclick="back()">‹</div>
+        <div class="ph g4" style="height:250px;flex-shrink:0"><span style="font-size:52px">🧵</span><div style="position:absolute;bottom:16px;left:20px;color:#FDF8EF" class="serif"><div style="font-size:20px;font-weight:700">湘绣非遗体验工坊</div><div style="font-size:11px;opacity:.85;margin-top:2px">第 12 期 · 「绣一枚团扇」</div></div></div>
+        <div style="padding:16px 22px;flex:1">
+          <div style="display:flex;gap:10px"><span class="chip r">手作工坊</span><span class="chip">含材料包</span><span class="chip">零基础可学</span></div>
+          <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:14px">
+            <div style="font-size:12.5px;line-height:2"><span style="color:var(--muted)">时间</span>　10 月 2 日（周五）14:00 – 16:30<br><span style="color:var(--muted)">地点</span>　湖南省工艺美术馆 · 三楼工坊<br><span style="color:var(--muted)">主讲</span>　柳映霜 及 湘绣研究所 2 位老师<br><span style="color:var(--muted)">费用</span>　<span style="color:var(--red);font-weight:700;font-size:15px">￥68</span> /人 · 含团扇材料包</div>
+          </div>
+          <p style="font-size:12px;color:#5A5248;line-height:1.8;margin-top:12px">在传承人指导下完成劈丝、起针与运针，带走一把亲手绣制的团扇。适合 12 岁以上人群，亲子同行有惊喜彩蛋。</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 8px 8px 20px">
+            <span style="font-size:13px">数量 <b>1</b> · 剩余 9 席</span>
+            <span class="btn btn-p tap" style="padding:10px 30px" onclick="go('success')">立即预约</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P09 预约成功 ═══════════ -->
+      <div class="screen" id="success">
+        <div class="sb"><span>13:14</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back light" onclick="back()">‹</div>
+        <div style="flex:1;align-items:center;text-align:center;display:flex;flex-direction:column">
+          <div style="margin-top:80px;width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#B3342B,#C89B5A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:40px;box-shadow:0 12px 30px rgba(179,52,43,.35)">✓</div>
+          <div class="serif" style="font-size:24px;font-weight:700;margin-top:22px">预约成功！</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:8px">已发送至你的邮箱与消息中心</div>
+          <div style="margin:26px 22px 0;background:#fff;border:1px dashed var(--gold);border-radius:18px;padding:22px 26px;position:relative">
+            <div style="font-size:15px;font-weight:700">湘绣非遗体验工坊 · 第 12 期</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.9">10 月 2 日 周五 14:00 – 16:30<br>湖南省工艺美术馆 · 三楼工坊<br>票号 NHX-2026-1002-017</div>
+            <div style="width:120px;height:120px;margin:16px auto 0;background:repeating-linear-gradient(0deg,#2B2622 0 6px,transparent 6px 12px),repeating-linear-gradient(90deg,#2B2622 0 6px,transparent 6px 12px);border:8px solid #2B2622;border-radius:6px"></div>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:8px">入馆出示电子票 · 提前 15 分钟到场</div>
+          </div>
+          <div style="display:flex;gap:12px;margin:22px 44px 0"><span class="btn btn-o tap" style="flex:1;text-align:center" onclick="showToast('已添加到日历')">添加到日历</span><span class="btn btn-p tap" style="flex:1;text-align:center" onclick="go('profile')">查看我的预约</span></div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P10 学堂 ═══════════ -->
+      <div class="screen" id="academy">
+        <div class="sb"><span>13:16</span><span class="r">📶 5G ▮64</span></div>
+        <div class="serif" style="padding:8px 22px 2px;font-size:24px;font-weight:700">非遗学堂</div>
+        <div style="padding:4px 22px;font-size:11.5px;color:var(--muted)">跟着传承人，把非遗学进手里</div>
+        <div style="display:flex;gap:8px;padding:12px 22px"><span class="chip" style="background:var(--red);color:#fff">推荐</span><span class="chip">刺绣</span><span class="chip">锻制</span><span class="chip">戏曲</span><span class="chip">年画</span></div>
+        <div style="padding:0 22px">
+          <div class="ph g1 tap" style="height:130px;border-radius:18px;margin-bottom:14px" onclick="go('course')"><div style="position:absolute;left:18px;bottom:16px;color:#FDF8EF;text-align:left"><div class="serif" style="font-size:17px;font-weight:700">零基础湘绣入门 · 8 讲</div><div style="font-size:11px;opacity:.85;margin-top:2px">主讲 柳映霜 · 12.6 万人在学</div></div><span class="chip" style="position:absolute;top:14px;right:14px;background:rgba(253,248,239,.9)">精品课</span></div>
+          <div style="display:flex;gap:12px;margin-bottom:12px">
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('course')"><div class="ph g3" style="height:86px"><span style="font-size:26px">🏮</span></div><div style="padding:9px 11px"><div style="font-size:12.5px;font-weight:700">年画拓印实操</div><div style="font-size:10px;color:var(--muted);margin-top:3px">6 讲 · 免费</div></div></div>
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('course')"><div class="ph g2" style="height:86px"><span style="font-size:26px">💎</span></div><div style="padding:9px 11px"><div style="font-size:12.5px;font-weight:700">银饰锻制基础</div><div style="font-size:10px;color:var(--muted);margin-top:3px">10 讲 · ￥49</div></div></div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('course')"><div class="ph g5" style="height:86px"><span style="font-size:26px">🎭</span></div><div style="padding:9px 11px"><div style="font-size:12.5px;font-weight:700">湘剧身段体验</div><div style="font-size:10px;color:var(--muted);margin-top:3px">4 讲 · 免费</div></div></div>
+            <div class="tap" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="go('course')"><div class="ph g4" style="height:86px"><span style="font-size:26px">🧶</span></div><div style="padding:9px 11px"><div style="font-size:12.5px;font-weight:700">土家织锦纹样课</div><div style="font-size:10px;color:var(--muted);margin-top:3px">8 讲 · ￥39</div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div class="on" data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P11 课程播放 ═══════════ -->
+      <div class="screen" id="course">
+        <div class="sb"><span>13:17</span><span class="r">📶 5G ▮64</span></div>
+        <div class="back" onclick="back()">‹</div>
+        <div class="ph g2" style="height:200px;flex-shrink:0"><div class="tap" style="width:60px;height:60px;border-radius:50%;background:rgba(253,248,239,.25);display:flex;align-items:center;justify-content:center;color:#FDF8EF;font-size:24px" onclick="showToast('已暂停')">⏸</div><div style="position:absolute;bottom:12px;left:18px;right:18px"><div style="height:4px;background:rgba(253,248,239,.3);border-radius:2px"><div style="width:62%;height:100%;background:var(--gold);border-radius:2px"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(253,248,239,.8);margin-top:5px"><span>09:24</span><span>15:05</span></div></div></div>
+        <div style="padding:16px 22px;flex:1">
+          <div style="font-size:16.5px;font-weight:700">第 3 讲 · 鬅毛针起针</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:5px">零基础湘绣入门 · 已学 62% · ⭐ 4.9</div>
+          <div style="display:flex;gap:10px;margin-top:12px"><span class="chip r">劈丝技巧</span><span class="chip">虎纹走向</span><span class="chip">课后作业</span></div>
+          <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:10px">
+            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:12.5px;color:var(--muted)"><span>3.1 劈丝技巧</span><span>12:40 ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 8px;font-size:12.5px;color:var(--red);font-weight:700;background:#FBF5EA;border-radius:8px"><span>▶ 3.2 鬅毛针起针</span><span>15:05</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:12.5px;color:var(--muted)"><span>3.3 虎纹走向练习</span><span>18:22</span></div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:12.5px;color:var(--muted)"><span>3.4 收针与装裱</span><span>14:10</span></div>
+          </div>
+        </div>
+        <div style="padding:0 22px 16px"><span class="btn btn-p tap" style="display:block;text-align:center" onclick="showToast('继续学习中…')">继续学习 · 已完成 62%</span></div>
+      </div>
+
+      <!-- ═══════════ P12 文创商城 ═══════════ -->
+      <div class="screen" id="shop">
+        <div class="sb"><span>13:18</span><span class="r">📶 5G ▮64</span></div>
+        <div style="display:flex;align-items:center;padding:8px 22px 0"><div style="flex:1;background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;color:#B0A48E">🔍 搜索文创好物</div><div class="tap" style="font-size:20px;margin-left:12px" onclick="showToast('购物车为空')">🛒</div></div>
+        <div class="serif" style="padding:14px 22px 4px;font-size:22px;font-weight:700">文创商店</div>
+        <div style="padding:0 22px;font-size:11.5px;color:var(--muted)">把湖湘非遗带回家</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 22px">
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="showToast('已加入购物车')"><div class="ph g1" style="height:120px"><span style="font-size:30px">🪭</span></div><div style="padding:10px 12px"><div style="font-size:12.5px;font-weight:700">湘绣团扇 · 玉兔望月</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="color:var(--red);font-weight:700;font-size:14px">￥268</span><span style="font-size:10px;color:var(--muted)">♥ 892</span></div></div></div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="showToast('已加入购物车')"><div class="ph g3" style="height:120px"><span style="font-size:30px">🏮</span></div><div style="padding:10px 12px"><div style="font-size:12.5px;font-weight:700">滩头年画礼盒 · 门神</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="color:var(--red);font-weight:700;font-size:14px">￥158</span><span style="font-size:10px;color:var(--muted)">♥ 1.2k</span></div></div></div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="showToast('已加入购物车')"><div class="ph g2" style="height:120px"><span style="font-size:30px">💍</span></div><div style="padding:10px 12px"><div style="font-size:12.5px;font-weight:700">苗银蝶恋花手环</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="color:var(--red);font-weight:700;font-size:14px">￥399</span><span style="font-size:10px;color:var(--muted)">♥ 634</span></div></div></div>
+          <div class="tap" style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden" onclick="showToast('已加入购物车')"><div class="ph g5" style="height:120px"><span style="font-size:30px">🧣</span></div><div style="padding:10px 12px"><div style="font-size:12.5px;font-weight:700">土家织锦围巾</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="color:var(--red);font-weight:700;font-size:14px">￥328</span><span style="font-size:10px;color:var(--muted)">♥ 421</span></div></div></div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div class="on" data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P13 个人中心 ═══════════ -->
+      <div class="screen" id="profile">
+        <div class="sb"><span>13:20</span><span class="r">📶 5G ▮64</span></div>
+        <div class="ph g1" style="height:170px;flex-shrink:0;align-items:flex-start;padding-top:60px"><div style="color:#FDF8EF;font-size:22px;margin-left:22px">⋯</div></div>
+        <div style="padding:0 22px;flex:1">
+          <div style="display:flex;align-items:flex-end;margin-top:-46px">
+            <div style="width:88px;height:88px;border-radius:50%;border:4px solid var(--paper);background:linear-gradient(135deg,#3D5A5B,#2B2622);display:flex;align-items:center;justify-content:center;color:#FDF8EF;font-size:30px" class="serif">雅</div>
+          </div>
+          <div style="margin-top:10px;font-size:19px;font-weight:700">小雅 <span style="font-size:11px;color:#8A6A33;background:#F5EAD4;border-radius:999px;padding:3px 10px;margin-left:6px">Lv.3 织梦人</span></div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:5px">「认识第 8 项湖湘非遗，正在学鬅毛针」</div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <div style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 0"><div style="font-size:17px;font-weight:700">32</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">收藏</div></div>
+            <div style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 0"><div style="font-size:17px;font-weight:700">8</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">非遗足迹</div></div>
+            <div style="flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 0"><div style="font-size:17px;font-weight:700">12</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">徽章</div></div>
+          </div>
+          <div style="margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:16px">
+            <div class="tap" style="display:flex;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px" onclick="go('badges')">🎖 非遗成就 <span style="color:var(--muted)">›</span></div>
+            <div class="tap" style="display:flex;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px" onclick="go('fav')">♡ 我的收藏 <span style="color:var(--muted)">›</span></div>
+            <div class="tap" style="display:flex;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line);font-size:13.5px" onclick="showToast('1 场活动即将开始')">🎫 我的预约 <span style="color:var(--muted);font-size:11px">1 场即将开始 ›</span></div>
+            <div class="tap" style="display:flex;justify-content:space-between;padding:13px 16px;font-size:13.5px" onclick="go('shop')">🛍 文创商店 <span style="color:var(--muted)">›</span></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div data-tab="home"><span class="ti">🏠</span>发现</div>
+          <div data-tab="gallery"><span class="ti">🗂</span>图鉴</div>
+          <div data-tab="academy"><span class="ti">🎓</span>学堂</div>
+          <div data-tab="events"><span class="ti">🎫</span>活动</div>
+          <div class="on" data-tab="profile"><span class="ti">👤</span>我的</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P14 我的收藏 ═══════════ -->
+      <div class="screen" id="fav">
+        <div class="sb"><span>13:21</span><span class="r">📶 5G ▮64</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 22px 0"><span class="tap" style="font-size:19px" onclick="back()">‹</span><div class="serif" style="font-size:21px;font-weight:700">我的收藏</div></div>
+        <div style="display:flex;gap:8px;padding:12px 22px"><span class="chip" style="background:var(--red);color:#fff">非遗项目 18</span><span class="chip">传承人 6</span><span class="chip">课程 5</span><span class="chip">活动 3</span></div>
+        <div style="padding:0 22px">
+          <div class="tap" style="display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px;margin-bottom:11px;align-items:center" onclick="go('detail')">
+            <div class="ph g4" style="width:64px;height:64px;border-radius:12px;flex-shrink:0"><span style="font-size:26px">🧵</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">湘绣</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统美术 · 收藏于 9.12</div></div><span style="color:var(--red);font-size:17px">♥</span>
+          </div>
+          <div class="tap" style="display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px;margin-bottom:11px;align-items:center" onclick="go('detail')">
+            <div class="ph g3" style="width:64px;height:64px;border-radius:12px;flex-shrink:0"><span style="font-size:26px">🏮</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">滩头年画</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统美术 · 收藏于 9.10</div></div><span style="color:var(--red);font-size:17px">♥</span>
+          </div>
+          <div class="tap" style="display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:11px;margin-bottom:11px;align-items:center" onclick="go('detail')">
+            <div class="ph g2" style="width:64px;height:64px;border-radius:12px;flex-shrink:0"><span style="font-size:26px">💎</span></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:700">苗族银饰锻制技艺</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">国家级 · 传统技艺 · 收藏于 9.08</div></div><span style="color:var(--red);font-size:17px">♥</span>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px">上拉加载更多</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ P15 成就 ═══════════ -->
+      <div class="screen" id="badges">
+        <div class="sb"><span>13:22</span><span class="r">📶 5G ▮64</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 22px 0"><span class="tap" style="font-size:19px" onclick="back()">‹</span><div class="serif" style="font-size:21px;font-weight:700">非遗成就</div></div>
+        <div style="margin:14px 22px 0;background:linear-gradient(135deg,#8E241D,#B3342B);border-radius:18px;padding:18px 20px;color:#FDF8EF">
+          <div style="font-size:12px;opacity:.85">当前称号</div>
+          <div class="serif" style="font-size:22px;font-weight:700;margin-top:4px">🧵 织梦人 · Lv.3</div>
+          <div style="margin-top:12px;height:6px;background:rgba(253,248,239,.25);border-radius:3px"><div style="width:64%;height:100%;background:var(--gold);border-radius:3px"></div></div>
+          <div style="font-size:10.5px;opacity:.85;margin-top:6px">再解锁 3 枚徽章升级为「守艺人 · Lv.4」</div>
+        </div>
+        <div class="serif" style="padding:16px 22px 8px;font-size:15px;font-weight:700">徽章墙 <span style="font-size:11px;color:var(--muted);font-weight:400">已收集 9 / 16</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 22px;text-align:center">
+          <div><div class="tap" style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px" onclick="showToast('徽章：初识湖湘')">🌱</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">初识湖湘</div></div>
+          <div><div class="tap" style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px" onclick="showToast('徽章：探访10项')">🔍</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">探访10项</div></div>
+          <div><div class="tap" style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px" onclick="showToast('徽章：学堂结业')">🎓</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">学堂结业</div></div>
+          <div><div style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#F1E9D8;filter:grayscale(1);opacity:.45;display:flex;align-items:center;justify-content:center;font-size:24px">🎫</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">现场打卡</div></div>
+          <div><div class="tap" style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px" onclick="showToast('徽章：首次运针')">🪡</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">首次运针</div></div>
+          <div><div class="tap" style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px" onclick="showToast('徽章：图鉴达人')">📜</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">图鉴达人</div></div>
+          <div><div style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#F1E9D8;filter:grayscale(1);opacity:.45;display:flex;align-items:center;justify-content:center;font-size:24px">🏮</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">年画知音</div></div>
+          <div><div style="width:56px;height:56px;margin:0 auto;border-radius:50%;background:#F1E9D8;filter:grayscale(1);opacity:.45;display:flex;align-items:center;justify-content:center;font-size:24px">👑</div><div style="font-size:9.5px;color:var(--muted);margin-top:5px">湖湘守艺人</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="hint">💡 <b>演示动线建议：</b>首页 → 点「非遗图鉴」→ 点「湘绣」进详情 → 点「传承谱系」看传承人 → 点「云上讲堂」→ 返回首页点「活动体验」→ 进活动详情 → 点「立即预约」→ 预约成功 → 点「查看我的预约」。</p>
+
+<script>
+const screens = document.querySelectorAll('.screen');
+const map = document.getElementById('map');
+const PAGE_MAP = [
+  ['home','首页'],['gallery','图鉴'],['detail','非遗详情'],['masters','传承人列表'],['master','传承人主页'],
+  ['lecture','云上讲堂'],['events','活动列表'],['event','活动详情'],['success','预约成功'],['academy','学堂'],
+  ['course','课程播放'],['shop','文创商城'],['profile','个人中心'],['fav','我的收藏'],['badges','成就']
+];
+// 构建页面地图
+PAGE_MAP.forEach(([id,label])=>{
+  const b=document.createElement('button');b.textContent=label;b.onclick=()=>jump(id);map.appendChild(b);
+});
+// 导航栈
+let stack=['home'];
+const TAB_OF={home:'home',gallery:'gallery',academy:'academy',events:'events',profile:'profile',
+              detail:'gallery',masters:'gallery',master:'gallery',lecture:'academy',event:'events',
+              success:'events',course:'academy',shop:'academy',fav:'profile',badges:'profile'};
+function activate(id){
+  screens.forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // 更新页面地图高亮
+  [...map.children].forEach((b,i)=>b.classList.toggle('on', PAGE_MAP[i][0]===id));
+  // 更新 tab
+  const t=TAB_OF[id]; if(t){ document.querySelectorAll('.tabbar div').forEach(d=>d.classList.toggle('on', d.dataset.tab===t)); }
+}
+function show(id){activate(id);stack.push(id);}
+function go(id){show(id);}
+function jump(id){stack=[id];activate(id);}
+function back(){if(stack.length>1){stack.pop();activate(stack[stack.length-1]);}else{jump('home');}}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1400);}
+function fav(el){el.textContent= el.textContent==='♥' ? '♡' : '♥'; el.style.color= el.textContent==='♥' ? '#fff' : '#fff'; showToast(el.textContent==='♥'?'已收藏':'已取消收藏');}
+// tab 点击
+document.querySelectorAll('.tabbar div').forEach(d=>{
+  d.onclick=()=>{const id=d.dataset.tab; if(id){stack=[id];activate(id);}};
+});
+</script>
+</body>
+</html>
